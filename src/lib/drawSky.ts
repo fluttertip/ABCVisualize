@@ -40,7 +40,7 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
       const lr = (nakOuter + rOuter) / 2
       ctx.save(); ctx.translate(cx + lr * Math.cos(am), cy + lr * Math.sin(am)); ctx.rotate(am + Math.PI / 2)
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      label(ctx, NAK_SHORT[i] ?? NAKSHATRAS[i].name, 0, 0, `600 ${fp(9.5).toFixed(1)}px Inter, sans-serif`, '#b4bdcd', 2.4); ctx.restore()
+      label(ctx, NAK_SHORT[i] ?? NAKSHATRAS[i].name, 0, 0, `600 ${fp(8.5).toFixed(1)}px Inter, sans-serif`, '#b4bdcd', 2.4); ctx.restore()
     }
     ctx.restore()
   }
@@ -67,11 +67,12 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
     const mid = rad(c), lr = (rInner + rOuter) / 2
     const lx = (cx + lr * Math.cos(mid)) * (1 - t) + (cell.cx / 500) * size * t
     const ly = (cy + lr * Math.sin(mid)) * (1 - t) + (cell.cy / 500) * size * t
-    const lord = GRAHAS[rashi.lord], k = fp(1) * ft, lh = 15.5 * k
+    const lord = GRAHAS[rashi.lord], k = fp(1) * ft, lh = 13.5 * k
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    label(ctx, `${rashi.sym} ${rashi.name}`, lx, ly - lh, `700 ${(13.5 * k).toFixed(1)}px Inter, sans-serif`, rashi.color)
-    label(ctx, `H${house}${card ? ' ◆' : ''} · ${rashi.style}`, lx, ly, `600 ${(11 * k).toFixed(1)}px JetBrains Mono, monospace`, card ? '#fbbf24' : '#c3cada')
-    label(ctx, `Lord ${lord.sym} ${lord.name}`, lx, ly + lh, `600 ${(11.5 * k).toFixed(1)}px Inter, sans-serif`, lord.color)
+    label(ctx, `${rashi.sym} ${rashi.name}`, lx, ly - 1.5 * lh, `700 ${(12 * k).toFixed(1)}px Inter, sans-serif`, rashi.color)
+    label(ctx, rashi.en, lx, ly - 0.5 * lh, `500 ${(10 * k).toFixed(1)}px Inter, sans-serif`, '#9aa4b6', 2.8)
+    label(ctx, `H${house}${card ? ' ◆' : ''} · ${rashi.style}`, lx, ly + 0.5 * lh, `600 ${(9.5 * k).toFixed(1)}px JetBrains Mono, monospace`, card ? '#fbbf24' : '#c3cada', 2.8)
+    label(ctx, `${lord.sym} ${lord.name}`, lx, ly + 1.5 * lh, `600 ${(10.5 * k).toFixed(1)}px Inter, sans-serif`, lord.color, 2.8)
   })
 
   if (t < 0.75) {
@@ -82,12 +83,12 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
     ctx.beginPath(); ctx.moveTo(cx - rInner, cy); ctx.lineTo(cx + rInner, cy); ctx.strokeStyle = 'rgba(167,139,250,0.4)'; ctx.stroke()
     ctx.setLineDash([])
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    label(ctx, 'ABOVE · VISIBLE', cx + rInner * 0.5, cy - rInner * 0.62, `600 ${fp(10).toFixed(1)}px Inter, sans-serif`, 'rgba(203,213,225,0.85)', 2.6)
-    label(ctx, 'BELOW · HIDDEN', cx - rInner * 0.5, cy - rInner * 0.62, `600 ${fp(10).toFixed(1)}px Inter, sans-serif`, 'rgba(203,213,225,0.85)', 2.6)
+    label(ctx, 'ABOVE · VISIBLE', cx + rInner * 0.5, cy - rInner * 0.62, `600 ${fp(9).toFixed(1)}px Inter, sans-serif`, 'rgba(203,213,225,0.85)', 2.6)
+    label(ctx, 'BELOW · HIDDEN', cx - rInner * 0.5, cy - rInner * 0.62, `600 ${fp(9).toFixed(1)}px Inter, sans-serif`, 'rgba(203,213,225,0.85)', 2.6)
     if (o.showAyanamsa && chart.frame === 'sidereal') {
       ctx.beginPath(); ctx.arc(cx, cy, rInner * 0.93, -Math.PI / 2, -Math.PI / 2 + (chart.ayanamsa * Math.PI) / 180); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.stroke()
     }
-    const df = `700 ${fp(10.5).toFixed(1)}px JetBrains Mono, monospace`
+    const df = `700 ${fp(9.5).toFixed(1)}px JetBrains Mono, monospace`
     ctx.font = df
     const wz = ctx.measureText('ZENITH · H10').width, wn = ctx.measureText('NADIR · H4').width, gap = fp(7)
     ;[
@@ -95,7 +96,7 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
       { l: 'ZENITH · H10', x: cx + rInner - wz / 2 - gap, y: cy - fp(11), c: '#a78bfa' }, { l: 'NADIR · H4', x: cx - rInner + wn / 2 + gap, y: cy - fp(11), c: '#38bdf8' },
     ].forEach((k) => label(ctx, k.l, k.x, k.y, df, k.c, 3))
 
-    const pr = Math.max(11.5, size * 0.0215)          // planet marker radius
+    const pr = Math.max(10.5, size * 0.0195)          // planet marker radius
     const order = [...GRAHA_ORDER].sort((x, y) => (x === o.focusGraha ? 1 : 0) - (y === o.focusGraha ? 1 : 0)) // selected planet is drawn on top
     order.forEach((id) => {
       const g = GRAHAS[id], p = chart.placements[id]
@@ -109,13 +110,13 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
       ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2); ctx.fillStyle = '#0a0e16'; ctx.fill()
       ctx.strokeStyle = foc ? '#fff' : g.color; ctx.lineWidth = foc ? 2.4 : 1.8; ctx.stroke()
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      ctx.fillStyle = g.color; ctx.font = `800 ${(pr * 0.95).toFixed(1)}px JetBrains Mono, monospace`; ctx.fillText(g.short, px, py + 0.5)
-      if (p.retro) label(ctx, 'R', px + rr * 0.95, py - rr * 0.95, `800 ${fp(10).toFixed(1)}px JetBrains Mono, monospace`, '#fb7185', 2.6)
+      ctx.fillStyle = g.color; ctx.font = `800 ${(pr * 0.92).toFixed(1)}px JetBrains Mono, monospace`; ctx.fillText(g.short, px, py + 0.5)
+      if (p.retro) label(ctx, 'R', px + rr * 0.95, py - rr * 0.95, `800 ${fp(9).toFixed(1)}px JetBrains Mono, monospace`, '#fb7185', 2.6)
       hits.planets.push({ id, x: px, y: py, r: rr + 4, house: p.house })
     })
-    const er = Math.max(17, size * 0.034)
+    const er = Math.max(16, size * 0.032)
     ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.fillStyle = '#1d4ed8'; ctx.fill(); ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1.4; ctx.stroke()
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.font = `800 ${fp(8.5).toFixed(1)}px Inter, sans-serif`; ctx.fillText('EARTH', cx, cy + 0.5)
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.font = `800 ${fp(8).toFixed(1)}px Inter, sans-serif`; ctx.fillText('EARTH', cx, cy + 0.5)
     ctx.restore()
   }
   return hits

@@ -169,7 +169,7 @@ export function BirthForm({ onGenerate }: { onGenerate: () => void }) {
           <div className="truncate text-sm text-white">
             <span className="font-semibold">{b.name.trim() || 'Untitled'}</span>
             <span className="ml-3 font-mono text-xs text-slate-300">{b.dob} · {fmt12(b.tob)}</span>
-            <span className="ml-3 text-xs text-mute">{placeLabel(b)} · {b.lat.toFixed(3)}, {b.lon.toFixed(3)} · {fmtUtc(b.tz)}{b.tzName ? ` (${b.tzName})` : ''}</span>
+            <span className="mt-1 block break-words text-xs text-mute sm:ml-3 sm:mt-0 sm:inline">{placeLabel(b)} · {b.lat.toFixed(3)}, {b.lon.toFixed(3)} · {fmtUtc(b.tz)}{b.tzName ? ` (${b.tzName})` : ''}</span>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">

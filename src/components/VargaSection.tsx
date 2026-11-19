@@ -15,7 +15,7 @@ const HARMONIC = Array.from({ length: 60 }, (_, i) => i + 1).filter((n) => !STAN
 
 function VargaSelect({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
-    <select className="input !w-auto !py-1 text-xs font-semibold" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+    <select className="input !w-auto !max-w-full !py-1 text-xs font-semibold" value={value} onChange={(e) => onChange(Number(e.target.value))}>
       <optgroup label="STANDARD · BPHS Shodashavarga (16, same in all software)">
         {STANDARD.map((n) => <option key={n} value={n}>{opt(n)}</option>)}
       </optgroup>

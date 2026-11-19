@@ -2,6 +2,7 @@ import { memo, startTransition, useEffect, useLayoutEffect, useRef, useState } f
 import { BirthForm } from '../components/BirthForm'
 import { ControlsBar } from '../components/ControlsBar'
 import { DetailPanel } from '../components/DetailPanel'
+import { ExtraCharts } from '../components/ExtraCharts'
 import { KundaliChart } from '../components/KundaliChart'
 import { SkyWheel } from '../components/SkyWheel'
 import { VargaSection } from '../components/VargaSection'
@@ -14,6 +15,7 @@ import { useChart } from '../store/useChart'
 const DetailPanelM = memo(DetailPanel)
 const VargaSectionM = memo(VargaSection)
 const TimingSectionM = memo(TimingSection)
+const ExtraChartsM = memo(ExtraCharts)
 
 type Phase = 'idle' | 'flight' | 'reveal'
 type Stage = 'fly1' | 'copy' | 'fly2' | 'morph'
@@ -246,6 +248,7 @@ export function ChartPage() {
         <div className="fade-quick">
           <VargaSectionM chart={chart} />
           <TimingSectionM />
+          <ExtraChartsM />
         </div>
       )}
 
