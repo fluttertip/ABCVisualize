@@ -9,6 +9,7 @@ import { VargaSection } from '../components/VargaSection'
 import { TimingSection } from '../components/TimingSection'
 import { drawSky } from '../lib/drawSky'
 import { useChartData } from '../lib/useChartData'
+import { ArrowBar, LoopNotes } from '../components/ArrowBar'
 import { useChart } from '../store/useChart'
 
 // the heavy children are memoised so the animation's state changes (stage / phase) never re-render them mid-flight
@@ -31,6 +32,7 @@ const T_FLY2 = 1400   // copy glides sideways into Section 2
 const T_HOLD = 200    // beat before the morph starts
 const T_MORPH = 2900  // circle -> diamond
 const X_AT = 0.78     // the real D1 chart starts cross-fading in at this point of the morph (no hard hand-off)
+const pickHG = (h: number, g: Parameters<ReturnType<typeof useChart.getState>['select']>[1]) => useChart.getState().select(h, g)   // stable identity so the memoized diamond is not redrawn on every animation frame
 const T_REVEAL = 4400 // after that: labels, planets, arrows fade in one after another
 
 export function ChartPage() {
@@ -154,13 +156,6 @@ export function ChartPage() {
   const ready = phase === 'idle'
   const T = s.arrows
   const sizeBudget = Math.max(340, Math.min(880, vh - (s.generated ? 330 : 300)))
-  const Toggle = ({ k, label, color }: { k: 'out' | 'in' | 'lord'; label: string; color: string }) => (
-    <label className="flex cursor-pointer items-center gap-1.5 text-[11px]">
-      <input type="checkbox" checked={T[k]} onChange={(e) => s.set({ arrows: { ...T, [k]: e.target.checked } })} style={{ accentColor: color }} />
-      <span style={{ color }}>{label}</span>
-    </label>
-  )
-
   return (
     <main className="mx-auto max-w-[1700px] px-4 pb-16 sm:px-6">
       <BirthForm onGenerate={handleGenerate} />
@@ -209,26 +204,28 @@ export function ChartPage() {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="seg"><button data-on={s.chartStyle === 'north'} onClick={() => s.set({ chartStyle: 'north' })}>North</button><button data-on={s.chartStyle === 'south'} onClick={() => s.set({ chartStyle: 'south' })}>South</button></div>
-                <Toggle k="out" label="Outgoing" color="#38bdf8" /><Toggle k="in" label="Incoming" color="#a78bfa" /><Toggle k="lord" label="Lord link" color="#fbbf24" />
+                
               </div>
             </div>
+            <div className="mb-1.5 flex justify-center transition-opacity duration-1000" style={{ opacity: phase === 'flight' && stage !== 'morph' ? 0 : 1 }}><ArrowBar value={T} onChange={(v) => s.set({ arrows: v })} /></div>
             <div ref={chartRef} className="relative mx-auto aspect-square w-full" style={{ maxWidth: sizeBudget }}>
               {/* landing marker while the copy travels in */}
               <div className="pointer-events-none absolute inset-[2%] rounded-full border border-dashed border-sky-300/25 transition-opacity duration-700" style={{ opacity: phase === 'flight' && (stage === 'fly2' || stage === 'morph') ? 1 : 0 }} />
               <div className="absolute inset-0 transition-opacity duration-500" style={{ opacity: phase === 'flight' ? 0 : 1 }}>
                 {/* Section 2 wheel: this is the one the "Sky wheel -> Diamond" control drives */}
-                <div className="absolute inset-0" style={{ opacity: s.controls.morphT < 0.999 ? 1 : 0, pointerEvents: s.controls.morphT < 0.999 ? 'auto' : 'none' }}>
+                <div className="absolute inset-0" style={{ opacity: s.controls.morphT < 0.999 ? 1 : 0, pointerEvents: s.controls.morphT < 0.999 ? 'auto' : 'none', transition: s.controls.morphT < 0.999 ? 'none' : 'opacity 0.25s ease 0.35s' }}>{/* going to the diamond the wheel stays underneath until the SVG diamond has faded in: no blink */}
                   <SkyWheel chart={chart} morphT={s.controls.morphT} focusHouse={s.selectedHouse} focusGraha={s.selectedGraha}
                     showNak={s.showNak} showAyanamsa={s.showAyanamsa} maxSize={sizeBudget} onPick={(h, g) => s.select(h, g)} />
                 </div>
                 <div className="absolute inset-0 transition-opacity duration-300" style={{ opacity: s.controls.morphT < 0.999 ? 0 : 1, pointerEvents: s.controls.morphT < 0.999 ? 'none' : 'auto' }}>
-                  <KundaliChart chart={chart} style={s.chartStyle} focusH={s.selectedHouse} focusG={s.selectedGraha} toggles={T} reveal={phase === 'reveal'} onPick={(h, g) => s.select(h, g)} />
+                  <KundaliChart chart={chart} style={s.chartStyle} focusH={s.selectedHouse} focusG={s.selectedGraha} toggles={T} reveal={phase === 'reveal'} onPick={pickHG} />
                 </div>
               </div>
             </div>
             <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-mute">
               <span><b className="text-emerald-300">↑</b> exalted</span><span><b className="text-rose-400">↓</b> debilitated</span><span><b className="text-sky-300">★</b> own</span><span>ᶜ combust</span><span>(R) retro</span><span>Click a house or planet to draw its links</span>
             </div>
+            <LoopNotes value={T} chart={chart} />
           </section>
         )}
 

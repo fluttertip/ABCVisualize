@@ -1,7 +1,9 @@
 import { create } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { BirthInput, Controls, Frame, birthMinute, birthSig } from '../lib/chart'
 import { CITIES, GrahaId } from '../lib/constants'
+import { ArrowToggles, NO_ARROWS } from '../lib/arrows'
 
 /**
  * Everything that makes the screen look the way it does RIGHT NOW. A saved chart stores this together with the birth data,
@@ -11,10 +13,10 @@ import { CITIES, GrahaId } from '../lib/constants'
 export interface SavedView {
   frame: Frame; controls: Controls; chartStyle: 'north' | 'south'
   selectedHouse: number; selectedGraha: GrahaId | null
-  showNak: boolean; showAyanamsa: boolean; arrows: { out: boolean; in: boolean; lord: boolean }
+  showNak: boolean; showAyanamsa: boolean; arrows: ArrowToggles
   vargaCount: 1 | 2 | 3; vargaSel: number[]; detailTab: DetailTab
   /** Section 4 arrows (absent in charts saved by older versions) */
-  vargaArrows?: { out: boolean; in: boolean; lord: boolean }
+  vargaArrows?: ArrowToggles
 }
 export type DetailTab = 'read' | 'planets' | 'aspects' | 'dasha' | 'math'
 export interface SavedChart { id: string; savedAt: number; title: string; birth: BirthInput; view?: SavedView }
@@ -37,9 +39,9 @@ interface State {
   selectedGraha: GrahaId | null
   showNak: boolean
   showAyanamsa: boolean
-  arrows: { out: boolean; in: boolean; lord: boolean }
+  arrows: ArrowToggles
   /** arrows / lord links in the Section 4 divisional charts (separate from Section 2) */
-  vargaArrows: { out: boolean; in: boolean; lord: boolean }
+  vargaArrows: ArrowToggles
   chartStyle: 'north' | 'south'
   vargaCount: 1 | 2 | 3
   vargaSel: number[]
@@ -76,6 +78,7 @@ export function isCurrentSaved(s: State) {
   return s.saved.some((x) => x.view && viewKey(x.birth, x.view) === key)
 }
 
+let lastSaved = ''
 export const useChart = create<State>()(
   persist(
     (set, get) => ({
@@ -90,8 +93,8 @@ export const useChart = create<State>()(
       selectedGraha: null,
       showNak: true,
       showAyanamsa: true,
-      arrows: { out: true, in: true, lord: true },
-      vargaArrows: { out: true, in: true, lord: true },
+      arrows: { ...NO_ARROWS },
+      vargaArrows: { ...NO_ARROWS },
       chartStyle: 'north',
       vargaCount: 1,
       vargaSel: [9, 10, 7],
@@ -141,7 +144,8 @@ export const useChart = create<State>()(
       // reads the new key first and falls back to the old "jyotish-studio-v1" one, so nothing saved earlier is lost
       storage: createJSONStorage(() => ({
         getItem: (n) => { try { return localStorage.getItem(n) ?? localStorage.getItem(OLD_STORAGE_KEY) } catch { return null } },
-        setItem: (n, v) => { try { localStorage.setItem(n, v) } catch { /* storage full / blocked */ } },
+        // the morph/spin sliders change the store every frame but nothing that is saved: skip the write when the text is unchanged
+        setItem: (n, v) => { try { if (v !== lastSaved) { lastSaved = v; localStorage.setItem(n, v) } } catch { /* storage full / blocked */ } },
         removeItem: (n) => { try { localStorage.removeItem(n) } catch { /* ignore */ } },
       })),
       // v2: earlier builds saved a much wider panel; v3: saved charts gained a `view`; v4: places carry an IANA zone (`tzName`) and Section 4 has its own arrow settings
@@ -157,3 +161,9 @@ export const useChart = create<State>()(
     },
   ),
 )
+
+/**
+ * The whole store EXCEPT `controls`. The Section 2 morph / spin / time sliders write `controls` up to 60 times a second;
+ * components that never read it use this so they are not re-rendered on every one of those frames.
+ */
+export const useChartLite = () => useChart(useShallow((s) => { const { controls: _c, ...rest } = s; return rest }))

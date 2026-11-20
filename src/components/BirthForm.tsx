@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { placeLabel } from '../lib/chart'
 import { Place, detectZone, searchOffline, searchPlaces } from '../lib/geocode'
 import { allZones, fmtOffset, fmtUtc, isValidZone, resolveOffset } from '../lib/tz'
-import { useChart } from '../store/useChart'
+import { useChart, useChartLite } from '../store/useChart'
 import { SaveActions } from './SaveActions'
 import { TimeField } from './TimeField'
 
@@ -106,7 +106,7 @@ function CoordField({ label, hint, value, min, max, onValid, onInvalid }: {
 }
 
 export function BirthForm({ onGenerate }: { onGenerate: () => void }) {
-  const { draft, setDraft, frame, setFrame, generated, committed } = useChart()
+  const { draft, setDraft, frame, setFrame, generated, committed } = useChartLite()
   const [editing, setEditing] = useState(false)
   const [badCoord, setBadCoord] = useState<Record<string, boolean>>({})
   const [detecting, setDetecting] = useState(false)

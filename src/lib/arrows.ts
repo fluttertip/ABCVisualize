@@ -1,8 +1,11 @@
 import { GRAHAS, GRAHA_ORDER, GrahaId, RASHIS } from './constants'
 import { ChartData, aspectTargets } from './chart'
+import { drishtiLoops, lordLoops } from './loops'
 
-export interface Arrow { kind: 'out' | 'in' | 'lord'; from: number; to: number; label: string }
-export interface ArrowToggles { out: boolean; in: boolean; lord: boolean }
+export interface Arrow { kind: 'out' | 'in' | 'lord' | 'loopL' | 'loopD'; from: number; to: number; label: string }
+/** loopL / loopD are optional so charts saved by older versions (which only know the first three) still load; missing = off */
+export interface ArrowToggles { out: boolean; in: boolean; lord: boolean; loopL?: boolean; loopD?: boolean }
+export const NO_ARROWS: ArrowToggles = { out: false, in: false, lord: false, loopL: false, loopD: false }
 
 export function buildArrows(chart: ChartData, focusH: number, focusG: GrahaId | null, t: ArrowToggles): Arrow[] {
   const list: Arrow[] = []
@@ -24,5 +27,8 @@ export function buildArrows(chart: ChartData, focusH: number, focusG: GrahaId | 
     const lh = P[lord].house
     if (lh !== focusH) list.push({ kind: 'lord', from: focusH, to: lh, label: `Lord ${GRAHAS[lord].short}` })
   }
+  // loops: whole-chart circles, not tied to the selected house
+  if (t.loopL) lordLoops(chart).loops.forEach((l) => l.edges.forEach((e) => list.push({ kind: 'loopL', from: e.from, to: e.to, label: `Lord ${e.label}` })))
+  if (t.loopD) drishtiLoops(chart).forEach((l) => l.edges.forEach((e) => list.push({ kind: 'loopD', from: e.from, to: e.to, label: e.label })))
   return list
 }

@@ -25,8 +25,8 @@ export function SkyWheel({ chart, morphT, focusHouse, focusGraha, showNak, showA
     const c = canvas.current
     if (!c) return
     const dpr = window.devicePixelRatio || 1
-    c.width = size * dpr; c.height = size * dpr
-    c.style.width = `${size}px`; c.style.height = `${size}px`
+    // resizing a canvas wipes and reallocates it: only do that when the size really changed, never once per animation frame
+    if (c.width !== Math.round(size * dpr)) { c.width = size * dpr; c.height = size * dpr; c.style.width = `${size}px`; c.style.height = `${size}px` }
     const ctx = c.getContext('2d')!
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     hits.current = drawSky(ctx, size, chart, { morphT, focusHouse, focusGraha, showNak, showAyanamsa })

@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
-import { useChart } from '../store/useChart'
+import { useShallow } from 'zustand/react/shallow'
+import { useChart, useChartLite } from '../store/useChart'
 import { birthMinute, computeChart } from './chart'
 
 /** Before generate: live preview of the form. After: the committed birth + controls. */
 export function useChartData() {
-  const { draft, committed, generated, controls, frame } = useChart()
+  // field-level reads: `morphT` changes every animation frame and must not re-render everything that needs the chart
+  const { draft, committed, generated, frame } = useChartLite()
+  const { minuteOfDay, dayOffset, yearOffset, hourOffset, minuteOffset } = useChart(useShallow((s) => { const c = s.controls; return { minuteOfDay: c.minuteOfDay, dayOffset: c.dayOffset, yearOffset: c.yearOffset, hourOffset: c.hourOffset, minuteOffset: c.minuteOffset } }))
   const birth = generated && committed ? committed : draft
-  const { minuteOfDay, dayOffset, yearOffset, hourOffset, minuteOffset } = controls
   const chart = useMemo(
     () => computeChart(birth, generated ? { minuteOfDay, dayOffset, yearOffset, hourOffset, minuteOffset } : { minuteOfDay: birthMinute(birth), dayOffset: 0, yearOffset: 0, hourOffset: 0, minuteOffset: 0 }, frame),
     [birth, generated, minuteOfDay, dayOffset, yearOffset, hourOffset, minuteOffset, frame],

@@ -12,8 +12,9 @@ const rad = (d: number) => (-d * Math.PI) / 180
 const NAK_SHORT = ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'P.Phalguni', 'U.Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'P.Ashadha', 'U.Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'P.Bhadra', 'U.Bhadra', 'Revati']
 /** text with a dark halo so it stays readable on top of lines, fills and planet orbits */
 function label(ctx: CanvasRenderingContext2D, txt: string, x: number, y: number, font: string, fill: string, halo = 3.2) {
-  ctx.font = font; ctx.lineJoin = 'round'; ctx.lineWidth = halo; ctx.strokeStyle = 'rgba(8,11,18,0.92)'
-  ctx.strokeText(txt, x, y); ctx.fillStyle = fill; ctx.fillText(txt, x, y)
+  ctx.font = font
+  if (halo > 0) { ctx.lineJoin = 'round'; ctx.lineWidth = halo; ctx.strokeStyle = 'rgba(8,11,18,0.92)'; ctx.strokeText(txt, x, y) }
+  ctx.fillStyle = fill; ctx.fillText(txt, x, y)
 }
 
 export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: ChartData, o: SkyOpts): SkyHits {
@@ -28,6 +29,8 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
   const u = size / 560, fp = (px: number) => Math.max(px * 0.85, px * u)
   const ft = 1 - 0.22 * t                          // labels shrink a little while the wheel morphs into the small diamond cells
   ctx.clearRect(0, 0, size, size)
+  const mv = t > 0.001 && t < 0.999                // while morphing, the small labels skip their halo (60 text strokes per frame was the main cost)
+  const hl = (h: number) => (mv ? 0 : h)
 
   if (showNak && t < 0.85) {
     ctx.save(); ctx.globalAlpha = 1 - t / 0.85
@@ -40,7 +43,7 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
       const lr = (nakOuter + rOuter) / 2
       ctx.save(); ctx.translate(cx + lr * Math.cos(am), cy + lr * Math.sin(am)); ctx.rotate(am + Math.PI / 2)
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      label(ctx, NAK_SHORT[i] ?? NAKSHATRAS[i].name, 0, 0, `600 ${fp(8.5).toFixed(1)}px Inter, sans-serif`, '#b4bdcd', 2.4); ctx.restore()
+      label(ctx, NAK_SHORT[i] ?? NAKSHATRAS[i].name, 0, 0, `600 ${fp(8.5).toFixed(1)}px Inter, sans-serif`, '#b4bdcd', hl(2.4)); ctx.restore()
     }
     ctx.restore()
   }
@@ -69,10 +72,12 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
     const ly = (cy + lr * Math.sin(mid)) * (1 - t) + (cell.cy / 500) * size * t
     const lord = GRAHAS[rashi.lord], k = fp(1) * ft, lh = 13.5 * k
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.save(); ctx.globalAlpha = Math.min(1, Math.max(0, (1 - t) / 0.2))   // text fades out over the last 20% of the morph: the SVG diamond then brings in its own labels (no hard swap)
     label(ctx, `${rashi.sym} ${rashi.name}`, lx, ly - 1.5 * lh, `700 ${(12 * k).toFixed(1)}px Inter, sans-serif`, rashi.color)
-    label(ctx, rashi.en, lx, ly - 0.5 * lh, `500 ${(10 * k).toFixed(1)}px Inter, sans-serif`, '#9aa4b6', 2.8)
-    label(ctx, `H${house}${card ? ' ◆' : ''} · ${rashi.style}`, lx, ly + 0.5 * lh, `600 ${(9.5 * k).toFixed(1)}px JetBrains Mono, monospace`, card ? '#fbbf24' : '#c3cada', 2.8)
-    label(ctx, `${lord.sym} ${lord.name}`, lx, ly + 1.5 * lh, `600 ${(10.5 * k).toFixed(1)}px Inter, sans-serif`, lord.color, 2.8)
+    label(ctx, rashi.en, lx, ly - 0.5 * lh, `500 ${(10 * k).toFixed(1)}px Inter, sans-serif`, '#9aa4b6', hl(2.8))
+    label(ctx, `H${house}${card ? ' ◆' : ''} · ${rashi.style}`, lx, ly + 0.5 * lh, `600 ${(9.5 * k).toFixed(1)}px JetBrains Mono, monospace`, card ? '#fbbf24' : '#c3cada', hl(2.8))
+    label(ctx, `${lord.sym} ${lord.name}`, lx, ly + 1.5 * lh, `600 ${(10.5 * k).toFixed(1)}px Inter, sans-serif`, lord.color, hl(2.8))
+    ctx.restore()
   })
 
   if (t < 0.75) {

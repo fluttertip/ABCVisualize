@@ -4,8 +4,9 @@ import { GRAHAS, GRAHA_ORDER, GrahaId, RASHIS } from '../lib/constants'
 import { fmtDMS } from '../lib/math'
 import { CONVENTION, MOON_CHART, STANDARD, SUN_CHART, computeVarga, kindOf, vargaWorking } from '../lib/vargas'
 import { KIND_LABEL, infoOf, vargaLabel } from '../lib/vargaInfo'
-import { useChart } from '../store/useChart'
+import { useChart, useChartLite } from '../store/useChart'
 import { KundaliChart } from './KundaliChart'
+import { ArrowBar, LoopNotes } from './ArrowBar'
 import { EXPORT_SET, buildPdf, buildPng, buildZip, download } from '../lib/exportCharts'
 
 /** dropdown text: name plus the main themes in brackets */
@@ -67,7 +68,7 @@ function Working({ chart, n }: { chart: ChartData; n: number }) {
 }
 
 function VargaPanel({ chart, n, onChange }: { chart: ChartData; n: number; onChange: (n: number) => void }) {
-  const s = useChart()
+  const s = useChartLite()
   const [fh, setFh] = useState(1)
   const [fg, setFg] = useState<GrahaId | null>(null)
   const v = useMemo(() => computeVarga(chart, n), [chart, n])
@@ -90,6 +91,7 @@ function VargaPanel({ chart, n, onChange }: { chart: ChartData; n: number; onCha
       <div className="mx-auto aspect-square w-full" style={{ maxWidth: 640 }}>
         <KundaliChart chart={v} style={s.chartStyle} focusH={fh} focusG={fg} toggles={s.vargaArrows} reveal={false} onPick={(h, g) => { setFh(h); setFg(g) }} />
       </div>
+      <LoopNotes value={s.vargaArrows} chart={v} />
       <div className="mt-2 flex flex-wrap justify-center gap-1.5">
         {GRAHA_ORDER.map((id) => {
           const p = v.placements[id], r = RASHIS[p.rashiIdx]
@@ -138,7 +140,7 @@ const DownIcon = () => (
 
 /** one clearly-labelled block: PDF, one combined image, or a ZIP with a separate image per chart. Always clean (no arrows). */
 function DownloadAll({ chart }: { chart: ChartData }) {
-  const s = useChart()
+  const s = useChartLite()
   const [busy, setBusy] = useState<'pdf' | 'png' | 'zip' | null>(null)
   const [err, setErr] = useState('')
   const N = EXPORT_SET.length
@@ -146,7 +148,7 @@ function DownloadAll({ chart }: { chart: ChartData }) {
     if (!s.committed || busy) return
     setBusy(kind); setErr('')
     try {
-      const { controls: c, chartStyle } = s
+      const { chartStyle } = s, c = useChart.getState().controls   // read at click time: no re-render on every slider frame
       const name = (s.committed.name.trim() || 'chart').replace(/[^\w-]+/g, '_')
       const base = `${name}_${s.committed.dob}_all-${N}-charts`
       if (kind === 'pdf') download(await buildPdf(chart, s.committed, c, chartStyle), `${base}.pdf`)
@@ -174,30 +176,14 @@ function DownloadAll({ chart }: { chart: ChartData }) {
   )
 }
 
-/** Section 4 arrows: "Clean chart" removes every arrow and lord link; the three boxes pick them one by one */
+/** Section 4 link switches: same bar as Section 2, all off (clean chart) until ticked */
 function ArrowControls() {
-  const s = useChart()
-  const A = s.vargaArrows
-  const clean = !A.out && !A.in && !A.lord
-  const box = (k: 'out' | 'in' | 'lord', label: string, color: string) => (
-    <label key={k} className="flex cursor-pointer items-center gap-1.5 text-[11px]">
-      <input type="checkbox" checked={A[k]} onChange={(e) => s.set({ vargaArrows: { ...A, [k]: e.target.checked } })} style={{ accentColor: color }} />
-      <span style={{ color }}>{label}</span>
-    </label>
-  )
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="seg" title="Clean chart hides every arrow and lord link (the planets and houses stay)">
-        <button data-on={clean} onClick={() => s.set({ vargaArrows: { out: false, in: false, lord: false } })}>Clean chart</button>
-        <button data-on={!clean} onClick={() => { if (clean) s.set({ vargaArrows: { out: true, in: true, lord: true } }) }}>With arrows</button>
-      </div>
-      {!clean && <>{box('out', 'Outgoing', '#38bdf8')}{box('in', 'Incoming', '#a78bfa')}{box('lord', 'Lord link', '#fbbf24')}</>}
-    </div>
-  )
+  const s = useChartLite()
+  return <ArrowBar value={s.vargaArrows} onChange={(v) => s.set({ vargaArrows: v })} />
 }
 
 export function VargaSection({ chart }: { chart: ChartData }) {
-  const s = useChart()
+  const s = useChartLite()
   const count = s.vargaCount
   const sel = [0, 1, 2].map((i) => s.vargaSel[i] ?? [9, 10, 7][i])
   const setOne = (i: number, n: number) => s.set({ vargaSel: sel.map((x, j) => (j === i ? n : x)) })

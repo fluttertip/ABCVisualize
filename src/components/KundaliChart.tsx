@@ -1,7 +1,9 @@
+import { memo } from 'react'
 import { ChartData } from '../lib/chart'
 import { Arrow, ArrowToggles, buildArrows } from '../lib/arrows'
 import { DIAMOND_CELLS, GRAHAS, GrahaId, RASHIS, SOUTH_RASHI_POS } from '../lib/constants'
 import { fmtDMS } from '../lib/math'
+import { lordLoops } from '../lib/loops'
 
 interface Cell { house: number; rashiIdx: number; poly?: string; rect?: { x: number; y: number; w: number }; cx: number; cy: number; numX: number; numY: number }
 
@@ -21,6 +23,8 @@ const KIND = {
   out: { color: '#38bdf8', dash: '1.6 3.2', marker: 'mk-out' },
   in: { color: '#a78bfa', dash: '1.6 3.2', marker: 'mk-in' },
   lord: { color: '#fbbf24', dash: '0.8 3', marker: 'mk-lord' },
+  loopL: { color: '#fb923c', dash: '', marker: 'mk-loopL' },
+  loopD: { color: '#2dd4bf', dash: '', marker: 'mk-loopD' },
 } as const
 
 interface Props {
@@ -28,7 +32,7 @@ interface Props {
   toggles: ArrowToggles; reveal: boolean; onPick: (house: number, graha: GrahaId | null) => void
 }
 
-export function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, onPick }: Props) {
+export const KundaliChart = memo(function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, onPick }: Props) {
   const cells = layout(style, chart.lagnaIdx)
   const byHouse = new Map(cells.map((c) => [c.house, c]))
   const arrows = buildArrows(chart, focusH, focusG, toggles)
@@ -38,10 +42,10 @@ export function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, on
   arrows.forEach((a) => { const k = `${Math.min(a.from, a.to)}-${Math.max(a.from, a.to)}`; groups.set(k, [...(groups.get(k) ?? []), a]) })
 
   const tint = new Map<number, string>()
-  arrows.forEach((a) => { tint.set(a.to, KIND[a.kind].color); if (a.kind === 'in') tint.set(a.from, KIND.in.color) })
+  arrows.forEach((a) => { tint.set(a.to, KIND[a.kind].color); if (a.kind === 'in' || a.kind === 'loopL' || a.kind === 'loopD') tint.set(a.from, KIND[a.kind].color) })
+  const ownLord = toggles.loopL ? lordLoops(chart).own : []   // lord sitting in its own house = a loop of one
 
   const paths: JSX.Element[] = []
-  let arrowIdx = 0
   groups.forEach((arr, key) => {
     arr.forEach((a, k) => {
       const c1 = byHouse.get(a.from)!, c2 = byHouse.get(a.to)!
@@ -53,11 +57,10 @@ export function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, on
       const q = (t: number) => ({ x: (1 - t) ** 2 * c1.cx + 2 * (1 - t) * t * mx + t * t * c2.cx, y: (1 - t) ** 2 * c1.cy + 2 * (1 - t) * t * my + t * t * c2.cy })
       const s = q(0.2), e = q(0.8), lb = q(0.5)
       const K = KIND[a.kind]
-      const ad = 1.7 + arrowIdx++ * 0.08 // arrows come last, one after another
       paths.push(
-        <g key={`${key}-${k}-${a.kind}-${a.label}`} pointerEvents="none" className="k-arrow" style={reveal ? { animationDelay: `${ad}s` } : undefined}>
-          <path d={`M${s.x.toFixed(1)} ${s.y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${e.x.toFixed(1)} ${e.y.toFixed(1)}`} fill="none" stroke={K.color} strokeWidth={0.9}
-            strokeDasharray={K.dash} strokeLinecap="round" opacity={0.75} markerEnd={`url(#${K.marker})`} />
+        <g key={`${key}-${k}-${a.kind}-${a.label}`} pointerEvents="none" className="k-arrow">
+          <path d={`M${s.x.toFixed(1)} ${s.y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${e.x.toFixed(1)} ${e.y.toFixed(1)}`} fill="none" stroke={K.color} strokeWidth={a.kind.startsWith('loop') ? 1.5 : 0.9}
+            strokeDasharray={K.dash || undefined} strokeLinecap="round" opacity={a.kind.startsWith('loop') ? 0.9 : 0.75} markerEnd={`url(#${K.marker})`} />
           <text x={lb.x} y={lb.y} textAnchor="middle" dominantBaseline="middle" fontSize="7.5" fontWeight="600" fill={K.color}
             fontFamily="JetBrains Mono, monospace" style={{ paintOrder: 'stroke', stroke: '#0a0e16', strokeWidth: 3, strokeLinejoin: 'round' }}>{a.label}</text>
         </g>,
@@ -91,6 +94,7 @@ export function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, on
             <text x={c.numX} y={c.numY} textAnchor={south ? 'start' : 'middle'} dominantBaseline="middle" fill={r.color} fontSize="12" fontWeight="700" fontFamily="JetBrains Mono, monospace" pointerEvents="none">
               {south ? `${r.sym} ${r.name}` : r.num}
             </text>
+            {ownLord.includes(c.house) && <text x={c.numX + (south ? 56 : 15)} y={c.numY} textAnchor="middle" dominantBaseline="middle" fill={KIND.loopL.color} fontSize="12" fontWeight="700" pointerEvents="none"><title>Lord of this house sits in it</title>↻</text>}
             {c.house === 1 && (
               <text x={south ? c.numX : c.cx} y={south ? c.numY + 14 : c.cy - 22} textAnchor={south ? 'start' : 'middle'} fill="#f5b041" fontSize="9.5" fontWeight="700" fontFamily="JetBrains Mono, monospace" pointerEvents="none">
                 Asc {fmtDMS(chart.lagnaDeg)}
@@ -115,4 +119,4 @@ export function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, on
       {paths}
     </svg>
   )
-}
+})
