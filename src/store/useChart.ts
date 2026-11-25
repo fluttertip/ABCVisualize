@@ -47,6 +47,9 @@ interface State {
   vargaSel: number[]
   detailWidth: number
   detailTab: DetailTab
+  /** layout choices for this visit only (not saved): Section 1 visible, time / animation tools open */
+  showSky: boolean
+  showControls: boolean
   saved: SavedChart[]
   /** a saved view waiting to be applied the moment the chart is (re)generated */
   pendingView: SavedView | null
@@ -100,6 +103,8 @@ export const useChart = create<State>()(
       vargaSel: [9, 10, 7],
       detailWidth: 270,
       detailTab: 'read',
+      showSky: true,
+      showControls: false,
       saved: [],
       pendingView: null,
       setDraft: (p) => set((s) => ({ draft: { ...s.draft, ...p } })),
@@ -133,8 +138,8 @@ export const useChart = create<State>()(
       openSaved: (id) => {
         const item = get().saved.find((x) => x.id === id)
         if (!item) return
-        // animatedSig reset -> the morph plays once when it is opened
-        set({ draft: { ...item.birth }, committed: null, generated: false, animatedSig: null, autoGenerate: true, pendingView: item.view ? { ...item.view } : null })
+        // animatedSig is set to this chart's own signature, so generate() reports "already seen" and the intro animation does NOT play for saved charts
+        set({ draft: { ...item.birth }, committed: null, generated: false, animatedSig: birthSig(item.birth), autoGenerate: true, pendingView: item.view ? { ...item.view } : null })
       },
       deleteSaved: (id) => set((s) => ({ saved: s.saved.filter((x) => x.id !== id) })),
     }),

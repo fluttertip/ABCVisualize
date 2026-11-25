@@ -111,6 +111,7 @@ export function BirthForm({ onGenerate }: { onGenerate: () => void }) {
   const [badCoord, setBadCoord] = useState<Record<string, boolean>>({})
   const [detecting, setDetecting] = useState(false)
   const [detectMsg, setDetectMsg] = useState('')
+  const [tzOpen, setTzOpen] = useState(false)
   const expanded = !generated || editing
   const b = committed ?? draft
   const custom = draft.cityKey === 'custom'
@@ -152,51 +153,45 @@ export function BirthForm({ onGenerate }: { onGenerate: () => void }) {
   }
 
   const FrameToggle = (
-    <div className="flex flex-col items-end gap-1">
-      <div className="seg">
-        <button data-on={frame === 'sidereal'} onClick={() => setFrame('sidereal')}>Sidereal · Lahiri</button>
-        <button data-on={frame === 'tropical'} onClick={() => setFrame('tropical')}>Tropical · Western</button>
-      </div>
-      <span className="text-[11px] text-mute">{frame === 'sidereal' ? 'Used in Nepal, India & most of Asia (Vedic)' : 'Used in Western astrology'}</span>
+    <div className="seg" role="group" aria-label="Zodiac system">
+      <button type="button" data-on={frame === 'sidereal'} onClick={() => setFrame('sidereal')}>Sidereal · Lahiri</button>
+      <button type="button" data-on={frame === 'tropical'} onClick={() => setFrame('tropical')}>Tropical · Western</button>
     </div>
   )
 
   if (!expanded) {
     return (
-      <section className="flex flex-wrap items-center justify-between gap-3 py-1">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-mute">Step 1</div>
-          <div className="truncate text-sm text-white">
-            <span className="font-semibold">{b.name.trim() || 'Untitled'}</span>
-            <span className="ml-3 font-mono text-xs text-slate-300">{b.dob} · {fmt12(b.tob)}</span>
-            <span className="mt-1 block break-words text-xs text-mute sm:ml-3 sm:mt-0 sm:inline">{placeLabel(b)} · {b.lat.toFixed(3)}, {b.lon.toFixed(3)} · {fmtUtc(b.tz)}{b.tzName ? ` (${b.tzName})` : ''}</span>
+          <div className="truncate text-base font-semibold text-white">{b.name.trim() ? `${b.name.trim()}'s birth chart` : 'Birth chart'}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px] text-slate-300">
+            <span className="font-mono">{b.dob} · {fmt12(b.tob)}</span>
+            <span className="min-w-0 break-words text-mute">{placeLabel(b)} · {fmtUtc(b.tz)}</span>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {FrameToggle}
-          <button className="btn" onClick={() => setEditing(true)}>Edit details</button>
+          <button type="button" className="btn !py-2" onClick={() => setEditing(true)}>Edit details</button>
           <SaveActions canSave />
         </div>
       </section>
     )
   }
 
+  // the zone panel stays open when the user has to do something there (custom coordinates, manual offset, unknown zone)
+  const tzShown = tzOpen || custom || manualTz || !zoneKnown
+  const Num = ({ n }: { n: number }) => <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-semibold text-slate-200">{n}</span>
+
   return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="text-[11px] font-medium uppercase tracking-wider text-mute">Step 1</div>
-          <h2 className="text-sm font-semibold text-white">Birth moment & place</h2>
-          {!generated && <p className="mt-0.5 text-[12px] text-amber-200/80">Enter the birth details below, then press <b className="text-amber-200">Generate chart</b>.</p>}
-        </div>
-        <div className="flex flex-wrap items-end gap-3">
-          {FrameToggle}
-          <SaveActions canSave={generated} />
-        </div>
+    <section className="min-w-0">
+      <div className="mb-3">
+        <div className="text-[11px] font-medium uppercase tracking-wider text-mute">Step 1</div>
+        <h2 className="text-xl font-semibold text-white">{generated ? 'Edit birth details' : 'Create your birth chart'}</h2>
+        <p className="mt-0.5 text-[13px] text-mute">{generated ? 'Change anything, then press Update chart.' : 'Enter when and where the person was born. The sky on the right updates as you type.'}</p>
       </div>
 
       <form
-        className={`space-y-3 ${generated ? '' : 'form-first'}`}
+        className={`space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 ${generated ? 'max-w-2xl' : 'form-first'}`}
         onSubmit={(e) => {
           e.preventDefault()
           if (problem) return
@@ -204,91 +199,111 @@ export function BirthForm({ onGenerate }: { onGenerate: () => void }) {
           setEditing(false); onGenerate()
         }}
       >
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto]">
-          <div className="col-span-2 md:col-span-1"><label className="label">Name (optional)</label><input className="input" value={draft.name} onChange={(e) => setDraft({ name: e.target.value })} placeholder="e.g. Aarav" /></div>
-          <div><label className="label">Date of birth</label><input className="input font-mono" type="date" value={draft.dob} onChange={(e) => e.target.value && setDraft({ dob: e.target.value })} /></div>
-          <div><label className="label">Exact time (local clock)</label><TimeField value={draft.tob} onChange={(tob) => setDraft({ tob })} /></div>
-          <div className="col-span-2 flex items-end md:col-span-1"><button type="submit" disabled={!!problem} className={`btn-primary w-full whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40 md:w-auto ${problem ? '' : 'btn-glow'}`}>{generated ? 'Update chart' : 'Generate chart'}</button></div>
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-white"><Num n={1} />Who</div>
+          <label className="label" htmlFor="bf-name">Name (optional)</label>
+          <input id="bf-name" className="input" value={draft.name} onChange={(e) => setDraft({ name: e.target.value })} placeholder="e.g. Aarav" />
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-white"><Num n={2} />When</div>
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+            <div className="min-w-0"><label className="label" htmlFor="bf-dob">Date of birth</label><input id="bf-dob" className="input font-mono" type="date" value={draft.dob} onChange={(e) => e.target.value && setDraft({ dob: e.target.value })} /></div>
+            <div className="min-w-0"><label className="label">Time of birth</label><TimeField value={draft.tob} onChange={(tob) => setDraft({ tob })} /></div>
+          </div>
+          <p className="mt-1 text-[11px] text-slate-500">Use the clock time at the birth place. Click AM / PM to switch.</p>
+        </div>
+
+        <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-xs font-semibold text-white">Birth place</div>
+            <div className="flex items-center gap-2 text-[13px] font-semibold text-white"><Num n={3} />Where</div>
             <div className="seg" role="tablist">
               <button type="button" data-on={!custom} onClick={() => setMode('search')}>Search city</button>
-              <button type="button" data-on={custom} onClick={() => setMode('custom')}>Custom lat / long</button>
+              <button type="button" data-on={custom} onClick={() => setMode('custom')}>Lat / long</button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-12">
-            {custom ? (
-              <>
-                <div className="col-span-1 md:col-span-3"><CoordField label="Latitude °" hint="+ North / − South" value={draft.lat} min={-90} max={90} onValid={coord('lat')} onInvalid={onBad('lat')} /></div>
-                <div className="col-span-1 md:col-span-3"><CoordField label="Longitude °" hint="+ East / − West" value={draft.lon} min={-180} max={180} onValid={coord('lon')} onInvalid={onBad('lon')} /></div>
-              </>
-            ) : (
-              <div className="col-span-2 md:col-span-6">
-                <label className="label">City / town (start typing)</label>
-                <PlaceSearch value={draft.place ?? ''} onPick={pickPlace} />
-                <div className="mt-0.5 font-mono text-[10px] text-slate-500">
-                  {draft.place ? <>{fmtLat(draft.lat)}, {fmtLon(draft.lon)} · need exact coordinates? <button type="button" className="text-sky-300 underline-offset-2 hover:underline" onClick={() => setMode('custom')}>use Custom lat / long</button></> : 'Suggestions appear as you type; click one.'}
+          {custom ? (
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+              <CoordField label="Latitude °" hint="+ North / − South" value={draft.lat} min={-90} max={90} onValid={coord('lat')} onInvalid={onBad('lat')} />
+              <CoordField label="Longitude °" hint="+ East / − West" value={draft.lon} min={-180} max={180} onValid={coord('lon')} onInvalid={onBad('lon')} />
+            </div>
+          ) : (
+            <div>
+              <label className="label">City, town or village</label>
+              <PlaceSearch value={draft.place ?? ''} onPick={pickPlace} />
+              <div className="mt-1 text-[11px] text-slate-500">
+                {draft.place ? <span className="font-mono">{fmtLat(draft.lat)}, {fmtLon(draft.lon)}</span> : 'Start typing, then click a suggestion.'}
+              </div>
+            </div>
+          )}
+
+          {/* time zone: worked out automatically; the details open only when needed or when asked */}
+          <div className="mt-3 rounded-lg bg-white/[0.03] px-3 py-2 text-[12px] text-slate-300">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>Time zone: <span className="font-mono text-white">{resolved ? `${fmtUtc(resolved.hours)}` : manualTz && Number.isFinite(draft.tz) ? fmtUtc(draft.tz) : '—'}</span>{draft.tzName ? <span className="text-mute"> · {draft.tzName}</span> : null}</span>
+              {!custom && !manualTz && zoneKnown && <button type="button" className="text-[11.5px] text-sky-300 underline-offset-2 hover:underline" onClick={() => setTzOpen((v) => !v)}>{tzOpen ? 'Hide' : 'Change'}</button>}
+            </div>
+
+            {resolved?.status === 'gap' && (
+              <div className="mt-1.5 text-amber-300">{draft.tob.slice(0, 5)} never existed on that date here (clocks jumped forward). Using {fmtUtc(resolved.hours)}, the offset just before the jump. Check the birth time. After the jump it would be {fmtUtc(resolved.alt!)}.</div>
+            )}
+            {resolved?.status === 'ambiguous' && (
+              <div className="mt-1.5 text-amber-300">{draft.tob.slice(0, 5)} happened twice that day (clocks went back). Using the first one, {fmtUtc(resolved.hours)}. If the birth was in the second hour, it is {fmtUtc(resolved.alt!)}: choose “Manual UTC offset” and enter {fmtOffset(resolved.alt!)}.</div>
+            )}
+
+            {tzShown && (
+              <div className="mt-2 space-y-2 border-t border-white/10 pt-2">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,9rem)]">
+                  <div className="min-w-0">
+                    <label className="label" htmlFor="bf-tz">Time zone</label>
+                    <select id="bf-tz" className="input" value={zoneKnown ? draft.tzName : draft.tzName ? '' : '__manual'}
+                      onChange={(e) => { setDetectMsg(''); setDraft({ tzName: e.target.value === '__manual' ? undefined : e.target.value }) }}>
+                      {draft.tzName && !zoneKnown && <option value="" disabled>Choose a time zone…</option>}
+                      <option value="__manual">Manual UTC offset…</option>
+                      {zones.map((z) => <option key={z} value={z}>{z}</option>)}
+                    </select>
+                  </div>
+                  {manualTz && (
+                    <div className="min-w-0">
+                      <label className="label" htmlFor="bf-off">UTC offset (hours)</label>
+                      <input id="bf-off" className={`input font-mono ${manualBad ? '!border-rose-400/70' : ''}`} type="number" step="0.25" min={-12} max={14} value={Number.isFinite(draft.tz) ? draft.tz : ''}
+                        onChange={(e) => setDraft({ tz: e.target.value === '' ? NaN : Number(e.target.value) })} />
+                    </div>
+                  )}
+                </div>
+                {custom && (
+                  <button type="button" className="btn !py-1" disabled={detecting || Object.values(badCoord).some(Boolean)} onClick={detect}
+                    title="Looks the time zone up from the coordinates (needs internet)">{detecting ? 'Detecting…' : 'Detect time zone from these coordinates'}</button>
+                )}
+                {detectMsg && <div className="text-[11px] text-sky-300">{detectMsg}</div>}
+                <div className="text-[11.5px] leading-relaxed text-slate-400">
+                  {resolved ? (
+                    <><span className="font-mono text-slate-200">{fmtUtc(resolved.hours)}</span> was in force in <span className="font-mono">{draft.tzName}</span> on {draft.dob} at {draft.tob.slice(0, 5)}. <span className="text-slate-500">Worked out from the time-zone database in your browser, including daylight saving and past law changes.</span></>
+                  ) : manualTz ? (
+                    <>Using the fixed offset <span className="font-mono text-slate-200">{Number.isFinite(draft.tz) ? fmtUtc(draft.tz) : '—'}</span> exactly as entered. Pick a time zone from the list instead if you want daylight saving and historical changes handled for you.</>
+                  ) : (
+                    <span className="text-amber-300">Time zone not recognised by this browser. Choose one from the list.</span>
+                  )}
                 </div>
               </div>
             )}
-
-            <div className="col-span-2 md:col-span-4">
-              <label className="label">Time zone</label>
-              <select className="input" value={zoneKnown ? draft.tzName : draft.tzName ? '' : '__manual'}
-                onChange={(e) => { setDetectMsg(''); setDraft({ tzName: e.target.value === '__manual' ? undefined : e.target.value }) }}>
-                {draft.tzName && !zoneKnown && <option value="" disabled>Choose a time zone…</option>}
-                <option value="__manual">Manual UTC offset…</option>
-                {zones.map((z) => <option key={z} value={z}>{z}</option>)}
-              </select>
-            </div>
-
-            <div className="col-span-2 md:col-span-2">
-              {manualTz ? (
-                <>
-                  <label className="label">UTC offset (hours)</label>
-                  <input className={`input font-mono ${manualBad ? '!border-rose-400/70' : ''}`} type="number" step="0.25" min={-12} max={14} value={Number.isFinite(draft.tz) ? draft.tz : ''}
-                    onChange={(e) => setDraft({ tz: e.target.value === '' ? NaN : Number(e.target.value) })} />
-                  <div className="mt-0.5 text-[10px] text-slate-500">{Number.isFinite(draft.tz) ? `= UTC${fmtOffset(draft.tz)}` : ''}</div>
-                </>
-              ) : custom ? (
-                <>
-                  <label className="label">&nbsp;</label>
-                  <button type="button" className="btn w-full !py-2" disabled={detecting || Object.values(badCoord).some(Boolean)} onClick={detect}
-                    title="Looks the time zone up from the coordinates (needs internet)">{detecting ? 'Detecting…' : 'Detect zone'}</button>
-                </>
-              ) : null}
-            </div>
           </div>
+        </div>
 
-          {custom && manualTz && (
-            <div className="mt-2"><button type="button" className="btn !py-1" disabled={detecting || Object.values(badCoord).some(Boolean)} onClick={detect}>{detecting ? 'Detecting…' : 'Detect time zone from these coordinates'}</button></div>
+        <div>
+          <div className="mb-2 text-[13px] font-semibold text-white">Zodiac system</div>
+          {FrameToggle}
+          <p className="mt-1 text-[11px] text-slate-500">{frame === 'sidereal' ? 'Sidereal (Lahiri): used in Nepal, India & most of Asia (Vedic).' : 'Tropical: used in Western astrology.'}</p>
+        </div>
+
+        {problem && <div className="text-[12px] text-rose-400" role="alert">{problem}</div>}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={!!problem} className={`btn-primary w-full whitespace-nowrap !py-2.5 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-[11rem] ${problem ? '' : generated ? '' : 'btn-glow'}`}>{generated ? 'Update chart' : 'Generate chart'}</button>
+          {generated && (
+            <button type="button" className="btn !py-2.5" onClick={() => { if (committed) setDraft({ ...committed, tzName: committed.tzName, place: committed.place }); setEditing(false) }}>Cancel</button>
           )}
-          {detectMsg && <div className="mt-2 text-[11px] text-sky-300">{detectMsg}</div>}
-
-          {/* the offset that will really be used, and why */}
-          <div className="mt-2 rounded-lg bg-white/[0.03] px-3 py-2 text-[11.5px] leading-relaxed text-slate-300">
-            {resolved ? (
-              <>
-                <span className="font-mono text-white">{fmtUtc(resolved.hours)}</span> was in force in <span className="font-mono">{draft.tzName}</span> on {draft.dob} at {draft.tob.slice(0, 5)}.
-                {' '}<span className="text-slate-500">Worked out from the time-zone database in your browser, including daylight saving and past law changes.</span>
-                {resolved.status === 'gap' && (
-                  <div className="mt-1 text-amber-300">{draft.tob.slice(0, 5)} never existed on that date here (clocks jumped forward). Using {fmtUtc(resolved.hours)}, the offset just before the jump. Check the birth time. After the jump it would be {fmtUtc(resolved.alt!)}.</div>
-                )}
-                {resolved.status === 'ambiguous' && (
-                  <div className="mt-1 text-amber-300">{draft.tob.slice(0, 5)} happened twice that day (clocks went back). Using the first one, {fmtUtc(resolved.hours)}. If the birth was in the second hour, it is {fmtUtc(resolved.alt!)}: choose “Manual UTC offset” and enter {fmtOffset(resolved.alt!)}.</div>
-                )}
-              </>
-            ) : manualTz ? (
-              <>Using the fixed offset <span className="font-mono text-white">{Number.isFinite(draft.tz) ? fmtUtc(draft.tz) : '—'}</span> exactly as entered. Pick a time zone from the list instead if you want daylight saving and historical changes handled for you.</>
-            ) : (
-              <span className="text-amber-300">Time zone not recognised by this browser. Choose one from the list.</span>
-            )}
-          </div>
-          {problem && <div className="mt-2 text-[11px] text-rose-400">{problem}</div>}
         </div>
       </form>
     </section>

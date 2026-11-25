@@ -35,15 +35,25 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
   if (showNak && t < 0.85) {
     ctx.save(); ctx.globalAlpha = 1 - t / 0.85
     const span = 360 / 27
+    // the nakshatra (and pada) that holds the selected planet: same sidereal longitude the planet is drawn at, so the match is exact
+    const fp0 = o.focusGraha ? chart.placements[o.focusGraha] : null
+    const fN = fp0 ? fp0.nak.idx : -1
     for (let i = 0; i < 27; i++) {
       const a1 = rad(90 + (i * span - lagna)), a2 = rad(90 + ((i + 1) * span - lagna)), am = (a1 + a2) / 2
       ctx.beginPath(); ctx.arc(cx, cy, nakOuter, a1, a2, true); ctx.arc(cx, cy, rOuter, a2, a1, false); ctx.closePath()
       ctx.fillStyle = i % 2 ? 'rgba(148,163,184,0.05)' : 'rgba(148,163,184,0.09)'; ctx.fill()
       ctx.strokeStyle = 'rgba(148,163,184,0.22)'; ctx.lineWidth = 0.6; ctx.stroke()
+      if (i === fN && o.focusGraha && fp0) {
+        const gc = GRAHAS[o.focusGraha].color
+        ctx.fillStyle = gc + '40'; ctx.fill(); ctx.strokeStyle = gc; ctx.lineWidth = 1.5; ctx.stroke()
+        const pa = fp0.nak.pada - 1, b1 = rad(90 + (i * span + pa * (span / 4) - lagna)), b2 = rad(90 + (i * span + (pa + 1) * (span / 4) - lagna))
+        ctx.beginPath(); ctx.arc(cx, cy, nakOuter, b1, b2, true); ctx.arc(cx, cy, rOuter, b2, b1, false); ctx.closePath()
+        ctx.fillStyle = gc + '66'; ctx.fill()
+      }
       const lr = (nakOuter + rOuter) / 2
       ctx.save(); ctx.translate(cx + lr * Math.cos(am), cy + lr * Math.sin(am)); ctx.rotate(am + Math.PI / 2)
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      label(ctx, NAK_SHORT[i] ?? NAKSHATRAS[i].name, 0, 0, `600 ${fp(8.5).toFixed(1)}px Inter, sans-serif`, '#b4bdcd', hl(2.4)); ctx.restore()
+      label(ctx, NAK_SHORT[i] ?? NAKSHATRAS[i].name, 0, 0, `600 ${fp(8.5).toFixed(1)}px Inter, sans-serif`, i === fN ? '#ffffff' : '#b4bdcd', hl(2.4)); ctx.restore()
     }
     ctx.restore()
   }
@@ -65,7 +75,7 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
     const focus = o.focusHouse === house, card = [1, 4, 7, 10].includes(house)
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y)); ctx.closePath()
     ctx.fillStyle = focus ? rashi.color + '33' : card ? rashi.color + '14' : rashi.color + '0a'; ctx.fill()
-    ctx.strokeStyle = focus ? rashi.color : rashi.color + '70'; ctx.lineWidth = focus ? 1.8 : 0.9; ctx.stroke()
+    ctx.strokeStyle = focus ? rashi.color : rashi.color + '70'; ctx.lineWidth = focus ? (o.focusGraha ? 2.6 : 1.8) : 0.9; ctx.stroke()
 
     const mid = rad(c), lr = (rInner + rOuter) / 2
     const lx = (cx + lr * Math.cos(mid)) * (1 - t) + (cell.cx / 500) * size * t
@@ -112,6 +122,12 @@ export function drawSky(ctx: CanvasRenderingContext2D, size: number, chart: Char
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + rInner * Math.cos(r), cy + rInner * Math.sin(r))
       ctx.strokeStyle = foc ? g.color : g.color + '66'; ctx.lineWidth = foc ? 1.6 : 0.8; ctx.stroke()
       ctx.beginPath(); ctx.arc(cx + rInner * Math.cos(r), cy + rInner * Math.sin(r), 3, 0, Math.PI * 2); ctx.fillStyle = g.color; ctx.fill()
+      if (foc) {                                     // selected planet: its sight-line continues through the sign ring and the nakshatra ring
+        const re = showNak && t < 0.85 ? nakOuter : rOuter
+        ctx.beginPath(); ctx.moveTo(cx + rInner * Math.cos(r), cy + rInner * Math.sin(r)); ctx.lineTo(cx + re * Math.cos(r), cy + re * Math.sin(r))
+        ctx.strokeStyle = g.color; ctx.lineWidth = 1.6; ctx.stroke()
+        ctx.beginPath(); ctx.arc(cx + re * Math.cos(r), cy + re * Math.sin(r), 3.2, 0, Math.PI * 2); ctx.fillStyle = g.color; ctx.fill()
+      }
       ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2); ctx.fillStyle = '#0a0e16'; ctx.fill()
       ctx.strokeStyle = foc ? '#fff' : g.color; ctx.lineWidth = foc ? 2.4 : 1.8; ctx.stroke()
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'

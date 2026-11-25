@@ -8,25 +8,38 @@ import { drishtiLoops, lordLoops } from '../lib/loops'
  *   Lord loops / Drishti loops       are whole-chart: only the closed circles of links, whichever house is selected.
  * Tip: one at a time stays readable.
  */
-const SW: { k: keyof ArrowToggles; label: string; color: string; tip: string }[] = [
-  { k: 'out', label: 'Outgoing', color: '#38bdf8', tip: 'Houses the selected house / planet looks at (drishti)' },
-  { k: 'in', label: 'Incoming', color: '#a78bfa', tip: 'Planets in other houses that look at the selected house' },
-  { k: 'lord', label: 'Lord link', color: '#fbbf24', tip: 'From the selected house to the house where its lord sits' },
-  { k: 'loopL', label: 'Lord loops', color: '#fb923c', tip: 'Closed circles of lord links, e.g. two houses whose lords sit in each other (sign exchange)' },
-  { k: 'loopD', label: 'Drishti loops', color: '#2dd4bf', tip: 'Closed circles of aspects, e.g. a planet in each of two houses that look at each other' },
+const SW: { k: keyof ArrowToggles; label: string; color: string; tip: string; group: 'sel' | 'all' }[] = [
+  { k: 'out', label: 'Outgoing', color: '#38bdf8', group: 'sel', tip: 'Houses the selected house / planet looks at (drishti)' },
+  { k: 'in', label: 'Incoming', color: '#a78bfa', group: 'sel', tip: 'Planets in other houses that look at the selected house' },
+  { k: 'lord', label: 'Lord link', color: '#fbbf24', group: 'sel', tip: 'From the selected house to the house where its lord sits' },
+  { k: 'loopL', label: 'Lord loops', color: '#fb923c', group: 'all', tip: 'Closed circles of lord links, e.g. two houses whose lords sit in each other (sign exchange)' },
+  { k: 'loopD', label: 'Drishti loops', color: '#2dd4bf', group: 'all', tip: 'Closed circles of aspects, e.g. a planet in each of two houses that look at each other' },
 ]
 
 export function ArrowBar({ value, onChange }: { value: ArrowToggles; onChange: (v: ArrowToggles) => void }) {
   const any = SW.some((x) => value[x.k])
+  const chip = (x: (typeof SW)[number]) => {
+    const on = !!value[x.k]
+    return (
+      <button
+        key={x.k} type="button" aria-pressed={on} title={x.tip}
+        onClick={() => onChange({ ...value, [x.k]: !on })}
+        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition"
+        style={on ? { borderColor: x.color, color: x.color, background: x.color + '1f' } : { borderColor: 'rgba(255,255,255,0.12)', color: '#94a3b8' }}
+      >
+        <i className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: x.color, opacity: on ? 1 : 0.55 }} />{x.label}
+      </button>
+    )
+  }
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      {SW.map((x) => (
-        <label key={x.k} title={x.tip} className="flex cursor-pointer items-center gap-1.5 text-[11px]">
-          <input type="checkbox" checked={!!value[x.k]} onChange={(e) => onChange({ ...value, [x.k]: e.target.checked })} style={{ accentColor: x.color }} />
-          <span style={{ color: x.color }}>{x.label}</span>
-        </label>
-      ))}
-      <button className="text-[11px] text-mute underline-offset-2 hover:text-white hover:underline disabled:opacity-40 disabled:no-underline" disabled={!any} onClick={() => onChange({ ...NO_ARROWS })}>Clean chart</button>
+    <div className="flex max-w-full flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+      <div className="flex flex-wrap items-center justify-center gap-1.5" role="group" aria-label="Links from the selected house or planet">
+        <span className="text-[10.5px] uppercase tracking-wider text-slate-500">Selected</span>{SW.filter((x) => x.group === 'sel').map(chip)}
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-1.5" role="group" aria-label="Whole-chart loops">
+        <span className="text-[10.5px] uppercase tracking-wider text-slate-500">Whole chart</span>{SW.filter((x) => x.group === 'all').map(chip)}
+      </div>
+      <button type="button" className="text-[11.5px] text-mute underline-offset-2 hover:text-white hover:underline disabled:opacity-40 disabled:no-underline" disabled={!any} onClick={() => onChange({ ...NO_ARROWS })}>Clean chart</button>
     </div>
   )
 }
