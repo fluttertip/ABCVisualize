@@ -1,5 +1,6 @@
 import { Link, NavLink, Route, Routes } from 'react-router-dom'
 import { ChartPage } from './pages/ChartPage'
+import { AnalysisPage } from './pages/AnalysisPage'
 import { LearnPage } from './pages/LearnPage'
 import { SavedPage } from './pages/SavedPage'
 import { useChart } from './store/useChart'
@@ -25,12 +26,14 @@ export default function App() {
             <Ico d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />Saved charts
             <span className={`grid min-w-[1.2rem] place-items-center rounded-full px-1.5 text-[11px] font-semibold leading-[18px] ${count ? 'bg-accent text-[#0a0e16]' : 'bg-white/10 text-slate-300'}`}>{count}</span>
           </NavLink>
+          <NavLink to="/analysis" className={tab}><Ico d="M3 3v18h18M7 15l4-4 3 3 5-6" />Analysis</NavLink>
           <NavLink to="/learn" className={tab}><Ico d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14ZM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" />Learn</NavLink>
         </nav>
       </header>
       <Routes>
         <Route path="/" element={<ChartPage />} />
         <Route path="/saved" element={<SavedPage />} />
+        <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/learn" element={<LearnPage />} />
         <Route path="/learn/:house" element={<LearnPage />} />
       </Routes>
