@@ -2,7 +2,8 @@ import * as Astronomy from 'astronomy-engine'
 import { GrahaId } from './constants'
 import { lahiriAyanamsa } from './engine'
 import { norm360, DEG2RAD, RAD2DEG } from './math'
-import { NAK_SPAN, Pick, SEARCH_PLANETS, SearchPlanet } from './customChart'
+import { geoVec } from './safeGeo'
+import { NAK_SPAN, OuterPlanet, Pick, SEARCH_ITEMS, SearchItem, SearchPlanet, outerTropLon } from './customChart'
 
 /**
  * SKY MATCH: find the moments when the real sky looks like a chart you placed by hand.
@@ -12,13 +13,13 @@ import { NAK_SPAN, Pick, SEARCH_PLANETS, SearchPlanet } from './customChart'
  * The two nodes are one item (Ketu is always exactly opposite Rahu).
  *
  * How it stays fast (all positions are the app's own ephemeris: astronomy-engine, apparent places, Lahiri):
- *   1. every 4 days: Rahu (a simple formula), Saturn, Jupiter. If more than `maxMiss` of them are wrong, the whole slot is dropped.
+ *   1. every 4 days: Neptune, Uranus, Rahu (a simple formula), Saturn, Jupiter. If more than `maxMiss` of them are wrong, the whole slot is dropped.
  *   2. each surviving day: Sun, Mars, Mercury, Venus as well.
  *   3. each surviving day, every 10 min (60 min without Lagna): Moon and Lagna. Window edges are then refined by bisection.
  * A match window is a stretch of time in which at most `maxMiss` items are wrong. maxMiss = 0 is an exact match.
  */
 export interface SearchReq {
-  picks: Partial<Record<SearchPlanet, Pick>>   // the planets to match (others are ignored)
+  picks: Partial<Record<SearchItem, Pick>>     // the planets to match (others are ignored)
   lagna: Pick | null                            // null = ignore the rising sign (no place needed)
   lat: number; lon: number
   ayanamsaShift: number                         // degrees added to Lahiri (0 = plain Lahiri)
@@ -34,11 +35,12 @@ const BODY: Record<string, Astronomy.Body> = { sun: Astronomy.Body.Sun, mercury:
 const toDate = (jd: number) => new Date((jd - 2440587.5) * 86400000)
 
 /** tropical longitude of one graha: the same formulas as lib/engine.ts, one body at a time */
-function tropLon(id: SearchPlanet, jd: number): number {
+function tropLon(id: SearchItem, jd: number): number {
+  if (id === 'uranus' || id === 'neptune') return outerTropLon(id as OuterPlanet, jd)
   if (id === 'rahu') { const T = (jd - 2451545) / 36525; return norm360(125.04452 - 1934.136261 * T + 0.0020708 * T * T) }
   const d = toDate(jd)
   if (id === 'moon') return norm360(Astronomy.EclipticGeoMoon(d).lon)
-  return norm360(Astronomy.Ecliptic(Astronomy.GeoVector(BODY[id], d, true)).elon)
+  return norm360(Astronomy.Ecliptic(geoVec(BODY[id as SearchPlanet], d)).elon)
 }
 /** rising sign (sidereal longitude): same formula as lib/engine.ts */
 function lagnaSid(jd: number, lat: number, lon: number, ay: number): number {
@@ -48,7 +50,7 @@ function lagnaSid(jd: number, lat: number, lon: number, ay: number): number {
   const y = Math.cos(lr), x = -(Math.sin(lr) * Math.cos(eps) + Math.tan(la) * Math.sin(eps))
   return norm360(Math.atan2(y, x) * RAD2DEG - ay)
 }
-function matches(lon: number, p: Pick): boolean {
+export function matches(lon: number, p: Pick): boolean {
   if (Math.floor(lon / 30) !== p.sign) return false
   if (p.nak !== null) {
     const k = Math.floor(lon / NAK_SPAN)
@@ -61,23 +63,23 @@ function matches(lon: number, p: Pick): boolean {
 const STEP = 4          // days between the first (slow planets) checks
 export async function searchSky(req: SearchReq, hooks: Hooks): Promise<{ truncated: boolean; cancelled: boolean }> {
   const picks = req.picks
-  const has = (id: SearchPlanet) => !!picks[id]
-  const slow = (['rahu', 'saturn', 'jupiter'] as SearchPlanet[]).filter(has)
-  const med = (['sun', 'mars', 'mercury', 'venus'] as SearchPlanet[]).filter(has)
+  const has = (id: SearchItem) => !!picks[id]
+  const slow = (['neptune', 'uranus', 'rahu', 'saturn', 'jupiter'] as SearchItem[]).filter(has)
+  const med = (['sun', 'mars', 'mercury', 'venus'] as SearchItem[]).filter(has)
   const slowMed = [...slow, ...med]
   const useMoon = has('moon'), useLagna = !!req.lagna
-  const total = SEARCH_PLANETS.filter(has).length + (useLagna ? 1 : 0)
+  const total = SEARCH_ITEMS.filter(has).length + (useLagna ? 1 : 0)
   if (total === 0) return { truncated: false, cancelled: false }
   const M = Math.max(0, Math.min(req.maxMiss, total - 1))
   const ayAt = (jd: number) => lahiriAyanamsa(jd) + req.ayanamsaShift
-  const sid = (id: SearchPlanet, jd: number) => norm360(tropLon(id, jd) - ayAt(jd))
-  const ok = (id: SearchPlanet, jd: number) => matches(sid(id, jd), picks[id]!)
+  const sid = (id: SearchItem, jd: number) => norm360(tropLon(id, jd) - ayAt(jd))
+  const ok = (id: SearchItem, jd: number) => matches(sid(id, jd), picks[id]!)
   const lagnaOk = (jd: number) => matches(lagnaSid(jd, req.lat, req.lon, ayAt(jd)), req.lagna!)
 
   /** labels of everything that does not match at this instant */
   const missedAt = (jd: number): string[] => {
     const out: string[] = []
-    SEARCH_PLANETS.forEach((id) => { if (has(id) && !ok(id, jd)) out.push(id) })
+    SEARCH_ITEMS.forEach((id) => { if (has(id) && !ok(id, jd)) out.push(id) })
     if (useLagna && !lagnaOk(jd)) out.push('lagna')
     return out
   }

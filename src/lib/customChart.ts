@@ -1,7 +1,9 @@
+import * as Astronomy from 'astronomy-engine'
 import { ChartData, Placement, dignityOf, houseOf, nakshatraOf, rashiOf } from './chart'
 import { GRAHAS, GRAHA_ORDER, GrahaId } from './constants'
 import { computeEphemeris } from './engine'
 import { norm360 } from './math'
+import { geoVec } from './safeGeo'
 
 /** a hand-placed planet: its sign, and optionally a nakshatra / pada inside that sign */
 export interface Pick { sign: number; nak: number | null; pada: number | null }
@@ -62,7 +64,10 @@ export function chartFromPicks(lagna: Pick, planets: Record<SearchPlanet, Pick>)
   const lon = {} as Lons
   SEARCH_PLANETS.forEach((id) => { lon[id] = pickLon(planets[id]) })
   lon.ketu = norm360(lon.rahu + 180)                  // the nodes are always exactly opposite
-  return chartFromLongitudes(pickLon(lagna), lon)
+  const c = chartFromLongitudes(pickLon(lagna), lon)
+  // a hand-placed chart has no real degrees (positions are just the middle of the sign), so "combust" cannot be known: never claim it
+  GRAHA_ORDER.forEach((id) => { c.placements[id].combust = false })
+  return c
 }
 
 /** the real sky (apparent positions, Lahiri) at a Julian day (UT) and place, as ChartData */
@@ -74,4 +79,19 @@ export function chartAtJd(jd: number, lat: number, lon: number, ayanamsaShift = 
   GRAHA_ORDER.forEach((id) => { c.placements[id].retro = e.bodies[id].isRetro && id !== 'rahu' && id !== 'ketu'; c.placements[id].speed = e.bodies[id].speed })
   c.jd = jd; c.ayanamsa = e.ayanamsa + ayanamsaShift
   return c
+}
+
+/** Uranus and Neptune: shown and searchable, but NOT part of any traditional (Parashari) rule in this app. */
+export type OuterPlanet = 'uranus' | 'neptune'
+export const OUTER_PLANETS: OuterPlanet[] = ['uranus', 'neptune']
+export const OUTER_INFO: Record<OuterPlanet, { name: string; sym: string; short: string; color: string }> = {
+  uranus: { name: 'Uranus', sym: '♅', short: 'Ur', color: '#67e8f9' },
+  neptune: { name: 'Neptune', sym: '♆', short: 'Ne', color: '#818cf8' },
+}
+export type SearchItem = SearchPlanet | OuterPlanet
+export const SEARCH_ITEMS: SearchItem[] = [...SEARCH_PLANETS, ...OUTER_PLANETS]
+/** tropical longitude (apparent, geocentric) from the same ephemeris the other planets use */
+export function outerTropLon(id: OuterPlanet, jd: number): number {
+  const d = new Date((jd - 2440587.5) * 86400000)
+  return norm360(Astronomy.Ecliptic(geoVec(id === 'uranus' ? Astronomy.Body.Uranus : Astronomy.Body.Neptune, d)).elon)
 }

@@ -3,7 +3,7 @@
  * Years use ASTRONOMICAL numbering (… 2 BCE = -1, 1 BCE = 0, 1 CE = 1 …) inside the code; people see "5114 BCE".
  * Calendar rule (the one historians use): Julian calendar up to 4 Oct 1582, Gregorian from 15 Oct 1582.
  */
-const SHIFT_YEARS = 12000, SHIFT_DAYS = 4383000   // 12000 Julian years = exactly 4,383,000 days: keeps every JD positive for the formulas below
+const SHIFT_YEARS = 100000, SHIFT_DAYS = 36525000   // 100000 Julian years = exactly 36,525,000 days: keeps every JD positive for the formulas below (the limit of the date maths; JS Date itself reaches about 270,000 years)
 
 export const fmtYear = (y: number) => (y <= 0 ? `${1 - y} BCE` : `${y} CE`)
 export const toAstroYear = (year: number, era: 'CE' | 'BCE') => (era === 'BCE' ? 1 - year : year)

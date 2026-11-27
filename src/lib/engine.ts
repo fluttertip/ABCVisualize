@@ -1,6 +1,7 @@
 import * as Astronomy from 'astronomy-engine'
 import { GRAHAS, GRAHA_ORDER, GrahaId } from './constants'
 import { DEG2RAD, RAD2DEG, norm360 } from './math'
+import { geoVec } from './safeGeo'
 
 export function computeJD(year: number, month: number, day: number, utHours: number) {
   let Y = year, M = month
@@ -35,8 +36,8 @@ function tropicalAt(jd: number): Record<GrahaId, number> {
   const T = (jd - 2451545) / 36525
   const date = toDate(jd)
   const g: Record<string, number> = {}
-  g.sun = norm360(Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Sun, date, true)).elon)
-  for (const k of Object.keys(BODY)) g[k] = norm360(Astronomy.Ecliptic(Astronomy.GeoVector(BODY[k], date, true)).elon)
+  g.sun = norm360(Astronomy.Ecliptic(geoVec(Astronomy.Body.Sun, date)).elon)
+  for (const k of Object.keys(BODY)) g[k] = norm360(Astronomy.Ecliptic(geoVec(BODY[k], date)).elon)
   g.moon = norm360(Astronomy.EclipticGeoMoon(date).lon)                     // already referred to the equinox of date
   const rahu = norm360(125.04452 - 1934.136261 * T + 0.0020708 * T * T)      // mean node (the standard Vedic default)
   return { sun: g.sun, moon: g.moon, mars: g.mars, mercury: g.mercury, jupiter: g.jupiter, venus: g.venus, saturn: g.saturn, rahu, ketu: norm360(rahu + 180) }

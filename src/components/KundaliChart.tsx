@@ -30,9 +30,13 @@ const KIND = {
 interface Props {
   chart: ChartData; style: 'north' | 'south'; focusH: number; focusG: GrahaId | null
   toggles: ArrowToggles; reveal: boolean; onPick: (house: number, graha: GrahaId | null) => void
+  /** optional extra, display-only markers (e.g. Uranus / Neptune). They take no part in houses, aspects or arrows. */
+  extras?: { id: string; label: string; color: string; house: number; deg: string }[]
+  /** do not print degrees or the combust mark (used where the planets were placed by sign only, so no real degree exists) */
+  hideDeg?: boolean
 }
 
-export const KundaliChart = memo(function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, onPick }: Props) {
+export const KundaliChart = memo(function KundaliChart({ chart, style, focusH, focusG, toggles, reveal, onPick, extras, hideDeg }: Props) {
   const cells = layout(style, chart.lagnaIdx)
   const byHouse = new Map(cells.map((c) => [c.house, c]))
   const arrows = buildArrows(chart, focusH, focusG, toggles)
@@ -87,6 +91,8 @@ export const KundaliChart = memo(function KundaliChart({ chart, style, focusH, f
       })}
       {cells.map((c) => {
         const r = RASHIS[c.rashiIdx], ps = chart.byHouse[c.house]
+        const ex = extras ? extras.filter((e) => e.house === c.house) : []
+        const n = ps.length + ex.length
         const delay = `${0.35 + c.house * 0.09}s`
         const south = style === 'south'
         return (
@@ -97,20 +103,29 @@ export const KundaliChart = memo(function KundaliChart({ chart, style, focusH, f
             {ownLord.includes(c.house) && <text x={c.numX + (south ? 56 : 15)} y={c.numY} textAnchor="middle" dominantBaseline="middle" fill={KIND.loopL.color} fontSize="12" fontWeight="700" pointerEvents="none"><title>Lord of this house sits in it</title>↻</text>}
             {c.house === 1 && (
               <text x={south ? c.numX : c.cx} y={south ? c.numY + 14 : c.cy - 22} textAnchor={south ? 'start' : 'middle'} fill="#f5b041" fontSize="9.5" fontWeight="700" fontFamily="JetBrains Mono, monospace" pointerEvents="none">
-                Asc {fmtDMS(chart.lagnaDeg)}
+                {hideDeg ? 'Lagna' : `Asc ${fmtDMS(chart.lagnaDeg)}`}
               </text>
             )}
             {ps.map((id, i) => {
               const g = GRAHAS[id], p = chart.placements[id]
-              const y = south ? c.cy - 22 + i * 14 + (c.house === 1 ? 14 : 0) : c.cy + (i - (ps.length - 1) / 2) * 15 + (c.house === 1 ? 8 : 0)
+              const y = south ? c.cy - 22 + i * 14 + (c.house === 1 ? 14 : 0) : c.cy + (i - (n - 1) / 2) * 15 + (c.house === 1 ? 8 : 0)
               const sel = focusG === id
               return (
                 <g key={id} className="cursor-pointer" onClick={(e) => { e.stopPropagation(); onPick(c.house, id) }}>
                   {sel && <rect x={c.cx - 46} y={y - 8} width="92" height="15" rx="4" fill="#ffffff14" />}
                   <text x={c.cx} y={y} textAnchor="middle" dominantBaseline="middle" fill={g.color} fontSize="10.5" fontWeight="700" fontFamily="JetBrains Mono, monospace">
-                    {g.short}{p.retro ? '(R)' : ''}{p.dignity.short}{p.combust ? 'ᶜ' : ''} {fmtDMS(p.degInSign)}
+                    {g.short}{p.retro ? '(R)' : ''}{p.dignity.short}{hideDeg ? '' : `${p.combust ? 'ᶜ' : ''} ${fmtDMS(p.degInSign)}`}
                   </text>
                 </g>
+              )
+            })}
+            {ex.map((e, j) => {
+              const i = ps.length + j
+              const y = south ? c.cy - 22 + i * 14 + (c.house === 1 ? 14 : 0) : c.cy + (i - (n - 1) / 2) * 15 + (c.house === 1 ? 8 : 0)
+              return (
+                <text key={e.id} x={c.cx} y={y} textAnchor="middle" dominantBaseline="middle" fill={e.color} fontSize="10" fontStyle="italic" fontFamily="JetBrains Mono, monospace" pointerEvents="none">
+                  <title>Modern planet: shown for information, not used in the traditional rules</title>{e.label}{hideDeg ? '' : ` ${e.deg}`}
+                </text>
               )
             })}
           </g>
